@@ -63,7 +63,14 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">func</span>, <span class="va">fd_set</span>, timeout <span class="op">=</span> <span class="cn">Inf</span>, loop <span class="op">=</span> <span class="fu"><a href="create_loop.html">current_loop</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">later_fd</span><span class="op">(</span></span>
+<span>  <span class="va">func</span>,</span>
+<span>  readfds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  writefds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  exceptfds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  timeout <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  loop <span class="op">=</span> <span class="fu"><a href="create_loop.html">current_loop</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -72,14 +79,25 @@
 
 <dl><dt id="arg-func">func<a class="anchor" aria-label="anchor" href="#arg-func"></a></dt>
 <dd><p>A function that takes a single argument, a logical vector that
-indicates which file descriptors are ready. This may be all <code>FALSE</code> if the
-<code>timeout</code> argument is non-<code>Inf</code>. Invalid or already closed file descriptors
-will return <code>NA</code>.</p></dd>
+indicates which file descriptors are ready (a concatenation of <code>readfds</code>,
+<code>writefds</code> and <code>exceptfds</code>). This may be all <code>FALSE</code> if the
+<code>timeout</code> argument is non-<code>Inf</code>. Invalid file descriptors or those with
+errors will return <code>NA</code>.</p></dd>
 
 
-<dt id="arg-fd-set">fd_set<a class="anchor" aria-label="anchor" href="#arg-fd-set"></a></dt>
-<dd><p>Integer vector of file descriptors to monitor. Or on Windows,
-<code>SOCKET</code> values.</p></dd>
+<dt id="arg-readfds">readfds<a class="anchor" aria-label="anchor" href="#arg-readfds"></a></dt>
+<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+monitor for read activity.</p></dd>
+
+
+<dt id="arg-writefds">writefds<a class="anchor" aria-label="anchor" href="#arg-writefds"></a></dt>
+<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+monitor for write activity.</p></dd>
+
+
+<dt id="arg-exceptfds">exceptfds<a class="anchor" aria-label="anchor" href="#arg-exceptfds"></a></dt>
+<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+monitor for exceptions / errors.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
@@ -108,13 +126,13 @@ executed or has been cancelled already).</p>
 <span class="r-in"><span><span class="va">fd2</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/opt.html" class="external-link">opt</a></span><span class="op">(</span><span class="va">s2</span>, <span class="st">"recv-fd"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 1. timeout: prints FALSE, FALSE</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, <span class="fl">0.1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE FALSE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 2. fd1 active: prints TRUE, FALSE</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/send.html" class="external-link">send</a></span><span class="op">(</span><span class="va">s2</span>, <span class="st">"msg"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
@@ -122,14 +140,14 @@ executed or has been cancelled already).</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 3. both active: prints TRUE, TRUE</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/send.html" class="external-link">send</a></span><span class="op">(</span><span class="va">s1</span>, <span class="st">"msg"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE TRUE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># 4. fd2 active: prints FALSE, TRUE</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/recv.html" class="external-link">recv</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE  TRUE</span>
@@ -137,7 +155,7 @@ executed or has been cancelled already).</p>
 <span class="r-in"><span><span class="co"># 5. fds invalid: prints NA, NA</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">close</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">close</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] NA NA</span>
