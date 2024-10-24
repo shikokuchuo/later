@@ -54,7 +54,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Executes a function when a file descriptor is ready</h1>
-    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/fd/R/later.R" class="external-link"><code>R/later.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/compat/R/later.R" class="external-link"><code>R/later.R</code></a></small>
     <div class="hidden name"><code>later_fd.Rd</code></div>
     </div>
 
@@ -82,7 +82,7 @@
 indicates which file descriptors are ready (a concatenation of <code>readfds</code>,
 <code>writefds</code> and <code>exceptfds</code>). This may be all <code>FALSE</code> if the
 <code>timeout</code> argument is non-<code>Inf</code>. Invalid file descriptors or those with
-errors will return <code>NA</code>.</p></dd>
+exceptions will be returned as <code>NA</code>.</p></dd>
 
 
 <dt id="arg-readfds">readfds<a class="anchor" aria-label="anchor" href="#arg-readfds"></a></dt>
@@ -114,7 +114,7 @@ with all <code>FALSE</code>.</p></dd>
     <p>A function, which, if invoked, will cancel the callback. The
 function will return <code>TRUE</code> if the callback was successfully
 cancelled (or the callback has already been executed or cancelled) and
-<code>FALSE</code> if there was an error in cancellation.</p>
+<code>FALSE</code> if an error was encountered in cancellation.</p>
     </div>
 
     <div id="ref-examples">
