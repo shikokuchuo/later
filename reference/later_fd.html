@@ -81,8 +81,8 @@
 <dd><p>A function that takes a single argument, a logical vector that
 indicates which file descriptors are ready (a concatenation of <code>readfds</code>,
 <code>writefds</code> and <code>exceptfds</code>). This may be all <code>FALSE</code> if the
-<code>timeout</code> argument is non-<code>Inf</code>. Invalid file descriptors and those with
-activity other than the monitored type will be returned as <code>NA</code>.</p></dd>
+<code>timeout</code> argument is non-<code>Inf</code>. Invalid file descriptors or those with
+exceptions will be returned as <code>NA</code>.</p></dd>
 
 
 <dt id="arg-readfds">readfds<a class="anchor" aria-label="anchor" href="#arg-readfds"></a></dt>
