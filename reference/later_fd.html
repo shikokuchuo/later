@@ -148,21 +148,21 @@ handling logic inside of <code>func</code>.</p>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE FALSE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 2. fd1 active: prints TRUE, FALSE</span></span></span>
+<span class="r-in"><span><span class="co"># 2. fd1 ready: prints TRUE, FALSE</span></span></span>
 <span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/send.html" class="external-link">send</a></span><span class="op">(</span><span class="va">s2</span>, <span class="st">"msg"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1]  TRUE FALSE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 3. both active: prints TRUE, TRUE</span></span></span>
+<span class="r-in"><span><span class="co"># 3. both ready: prints TRUE, TRUE</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/send.html" class="external-link">send</a></span><span class="op">(</span><span class="va">s1</span>, <span class="st">"msg"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE TRUE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># 4. fd2 active: prints FALSE, TRUE</span></span></span>
+<span class="r-in"><span><span class="co"># 4. fd2 ready: prints FALSE, TRUE</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">nanonext</span><span class="fu">::</span><span class="fu"><a href="https://shikokuchuo.net/nanonext/reference/recv.html" class="external-link">recv</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
