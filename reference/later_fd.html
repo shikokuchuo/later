@@ -56,7 +56,7 @@ optional timeout."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/aja
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Executes a function when a file descriptor is ready</h1>
-    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/test/R/later.R" class="external-link"><code>R/later.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/timestamp/R/later.R" class="external-link"><code>R/later.R</code></a></small>
     <div class="hidden name"><code>later_fd.Rd</code></div>
     </div>
 
@@ -91,23 +91,25 @@ error conditions pending.</p></dd>
 
 
 <dt id="arg-readfds">readfds<a class="anchor" aria-label="anchor" href="#arg-readfds"></a></dt>
-<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+<dd><p>Integer vector of file descriptors, or Windows SOCKETs, to
 monitor for being ready to read.</p></dd>
 
 
 <dt id="arg-writefds">writefds<a class="anchor" aria-label="anchor" href="#arg-writefds"></a></dt>
-<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+<dd><p>Integer vector of file descriptors, or Windows SOCKETs, to
 monitor being ready to write.</p></dd>
 
 
 <dt id="arg-exceptfds">exceptfds<a class="anchor" aria-label="anchor" href="#arg-exceptfds"></a></dt>
-<dd><p>Integer vector of file descriptors, or Windows <code>SOCKET</code>s to
+<dd><p>Integer vector of file descriptors, or Windows SOCKETs, to
 monitor for error conditions pending.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
 <dd><p>Number of seconds to wait before giving up, and calling <code>func</code>
-with all <code>FALSE</code>.</p></dd>
+with all <code>FALSE</code>. The default <code>Inf</code> implies waiting indefinitely.
+Specifying <code>0</code> will check once without blocking, and supplying a negative
+value defaults to a timeout of 1s.</p></dd>
 
 
 <dt id="arg-loop">loop<a class="anchor" aria-label="anchor" href="#arg-loop"></a></dt>
@@ -179,7 +181,7 @@ handling logic inside of <code>func</code>.</p>
 <span class="r-in"><span><span class="co"># 5. fds invalid: prints NA, NA</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">close</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">close</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">later_fd</span><span class="op">(</span><span class="va">print</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fd1</span>, <span class="va">fd2</span><span class="op">)</span>, timeout <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.sleep.html" class="external-link">Sys.sleep</a></span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_now.html">run_now</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] NA NA</span>
