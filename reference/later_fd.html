@@ -56,7 +56,7 @@ optional timeout."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/aja
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Executes a function when a file descriptor is ready</h1>
-    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/cancel/R/later.R" class="external-link"><code>R/later.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/testing/R/later.R" class="external-link"><code>R/later.R</code></a></small>
     <div class="hidden name"><code>later_fd.Rd</code></div>
     </div>
 
@@ -120,6 +120,13 @@ with all <code>FALSE</code>.</p></dd>
 function will return <code>TRUE</code> if the callback was successfully
 cancelled and <code>FALSE</code> if not (this occurs if the callback has
 executed or has been cancelled already).</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>On the occasion the system-level <code>poll</code> (on Windows <code>WSAPoll</code> or <code>select</code>)
+returns an error, the callback will be made on a vector of all <code>NA</code>s. This is
+indistinguishable from a case where the <code>poll</code> succeeds but there are error
+conditions pending against each file descriptor.</p>
     </div>
     <div id="note">
     <h2>Note</h2>
