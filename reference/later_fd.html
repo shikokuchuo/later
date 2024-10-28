@@ -56,7 +56,7 @@ optional timeout."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/aja
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Executes a function when a file descriptor is ready</h1>
-    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/test/R/later.R" class="external-link"><code>R/later.R</code></a></small>
+    <small class="dont-index">Source: <a href="https://github.com/r-lib/later/blob/nativetest/R/later.R" class="external-link"><code>R/later.R</code></a></small>
     <div class="hidden name"><code>later_fd.Rd</code></div>
     </div>
 
@@ -85,9 +85,9 @@ optional timeout.</p>
 <dd><p>A function that takes a single argument, a logical vector that
 indicates which file descriptors are ready (a concatenation of <code>readfds</code>,
 <code>writefds</code> and <code>exceptfds</code>). This may be all <code>FALSE</code> if the
-<code>timeout</code> argument is non-<code>Inf</code>. Invalid file descriptors (such as those
-already closed) are returned as <code>NA</code>, as are <code>readfds</code> and <code>writefds</code> with
-error conditions pending.</p></dd>
+<code>timeout</code> argument is non-<code>Inf</code>. File descriptors with error conditions
+pending are represented as <code>NA</code>, as are invalid file descriptors such as
+those already closed.</p></dd>
 
 
 <dt id="arg-readfds">readfds<a class="anchor" aria-label="anchor" href="#arg-readfds"></a></dt>
@@ -125,8 +125,8 @@ executed or has been cancelled already).</p>
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p>On the occasion the system-level <code>poll</code> (on Windows <code>WSAPoll</code> or <code>select</code>)
-returns an error, the callback will be made on a vector of all <code>NA</code>s. This is
+    <p>On the occasion the system-level <code>poll</code> (on Windows <code>WSAPoll</code>) returns an
+error, the callback will be made on a vector of all <code>NA</code>s. This is
 indistinguishable from a case where the <code>poll</code> succeeds but there are error
 conditions pending against each file descriptor.</p>
     </div>
