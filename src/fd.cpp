@@ -97,14 +97,14 @@ public:
 };
 
 // for persistent wait thread
-static Cv cv;
-static std::atomic<bool> thread_active = false;
+static std::shared_ptr<std::atomic<bool>> thread_active = std::make_shared<std::atomic<bool>>(false);
 static std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
+static Cv cv;
 
 // accessor for init.c
 extern "C" void later_exiting(void) {
-  if (thread_active.load()) {
-    thread_active.store(false); // atomic so can be called outside lock
+  if (thread_active->load()) {
+    thread_active->store(false); // atomic so can be called outside lock
     cv.lock();
     if (cv.busy())
       (*thread_args)->flag->store(false);
@@ -184,7 +184,7 @@ static int wait_thread_single(void *arg) {
 static int wait_thread_persistent(void *arg) {
 
   tct_thrd_detach(tct_thrd_current());
-  thread_active.store(true);
+  thread_active->store(true);
 
   if (cv.lock()) goto exit;
   if (cv.signal()) goto unlock_and_exit;
@@ -197,7 +197,7 @@ static int wait_thread_persistent(void *arg) {
   while (1) {
 
     // set to false by later_exiting() on unload
-    if (!thread_active.load())
+    if (!thread_active->load())
       goto exit;
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
@@ -221,7 +221,7 @@ static int wait_thread_persistent(void *arg) {
   unlock_and_exit:
   cv.unlock();
   exit:
-  thread_active.store(false);
+  thread_active->store(false);
   return 1;
 
 }
@@ -230,14 +230,14 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
 
   std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(new std::shared_ptr<ThreadArgs>(args));
 
-  if (!thread_active.load()) {
+  if (!thread_active->load()) {
 
     tct_thrd_t thr;
     if (tct_thrd_create(&thr, &wait_thread_persistent, NULL) != tct_thrd_success)
       goto exit;
 
     if (cv.lock()) goto exit;
-    while (!thread_active.load()) {
+    while (!thread_active->load()) {
       if (cv.wait()) goto unlock_and_exit;
     }
     if (cv.unlock()) goto exit;
