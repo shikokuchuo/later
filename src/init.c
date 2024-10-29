@@ -91,14 +91,16 @@ void R_init_later(DllInfo *dll) {
 
 extern tct_mtx_t mutex;
 extern tct_cnd_t condvar;
-int later_thread_active_load(void);
-void later_thread_active_store(int);
+int later_thread_active(void);
+void later_set_exiting(void);
+void cancel_busy_thread(void);
 
 void R_unload_later(DllInfo *info) {
   // if wait thread active, signal it to exit
-  if (later_thread_active_load()) {
-    later_thread_active_store(0);
+  if (later_thread_active()) {
+    later_set_exiting(); // atomic so can be called outside lock
     tct_mtx_lock(&mutex);
+    cancel_busy_thread(); // not thread-safe so must be called under lock
     tct_cnd_signal(&condvar);
     tct_mtx_unlock(&mutex);
     tct_cnd_destroy(&condvar);
