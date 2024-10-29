@@ -58,25 +58,60 @@ private:
 
 };
 
+// special condition variable class for later_fd()
+class Cv {
+  tct_mtx_t _m;
+  tct_cnd_t _c;
+  bool _busy; // condition
+
+public:
+  Cv() {
+    if (tct_mtx_init(&_m, tct_mtx_plain) != tct_thrd_success)
+      throw std::runtime_error("Mutex failed to initialize");
+    if (tct_cnd_init(&_c) != tct_thrd_success)
+      throw std::runtime_error("Condition variable failed to initialize");
+  }
+  bool lock() {
+    return tct_mtx_lock(&_m) != tct_thrd_success;
+  }
+  bool unlock() {
+    return tct_mtx_unlock(&_m) != tct_thrd_success;
+  }
+  bool signal() {
+    return tct_cnd_signal(&_c) != tct_thrd_success;
+  }
+  bool wait() {
+    return tct_cnd_wait(&_c, &_m) != tct_thrd_success;
+  }
+  bool busy() {
+    return _busy;
+  }
+  void busy(bool value) {
+    _busy = value;
+  }
+  void destroy() {
+    tct_cnd_destroy(&_c);
+    tct_mtx_destroy(&_m);
+  }
+
+};
+
 // for persistent wait thread
-tct_mtx_t mutex;
-tct_cnd_t condvar;
-bool thread_busy = false; // condition
-std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
+static Cv cv;
 static std::atomic<bool> thread_active = false;
+static std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
 
-// accessors for init.c
-extern "C" int later_thread_active(void) {
-  return thread_active.load();
-}
-
-extern "C" void later_set_exiting(void) {
-  thread_active.store(false);
-}
-
-extern "C" void cancel_busy_thread(void) {
-  if (thread_busy)
-    (*thread_args)->flag->store(false);
+// accessor for init.c
+extern "C" void later_exiting(void) {
+  if (thread_active.load()) {
+    thread_active.store(false); // atomic so can be called outside lock
+    cv.lock();
+    if (cv.busy())
+      (*thread_args)->flag->store(false);
+    cv.signal();
+    cv.unlock();
+  }
+  cv.destroy(); // must be called eplicitly here to ensure this happens last
 }
 
 // callback executed on main thread
@@ -130,7 +165,7 @@ static int wait_on_fds(std::shared_ptr<ThreadArgs> args) {
 
 }
 
-static int wait_thread_ephemeral(void *arg) {
+static int wait_thread_single(void *arg) {
 
   tct_thrd_detach(tct_thrd_current());
 
@@ -151,17 +186,13 @@ static int wait_thread_persistent(void *arg) {
   tct_thrd_detach(tct_thrd_current());
   thread_active.store(true);
 
-  if (tct_mtx_lock(&mutex) != tct_thrd_success)
-    goto exit;
-  if (tct_cnd_signal(&condvar) != tct_thrd_success)
-    goto unlock_and_exit;
-  thread_busy = false;
-  while (!thread_busy) {
-    if (tct_cnd_wait(&condvar, &mutex) != tct_thrd_success)
-      goto unlock_and_exit;
+  if (cv.lock()) goto exit;
+  if (cv.signal()) goto unlock_and_exit;
+  cv.busy(false);
+  while (!cv.busy()) {
+    if (cv.wait()) goto unlock_and_exit;
   }
-  if (tct_mtx_unlock(&mutex) != tct_thrd_success)
-    goto exit;
+  if (cv.unlock()) goto exit;
 
   while (1) {
 
@@ -176,22 +207,19 @@ static int wait_thread_persistent(void *arg) {
 
     callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
 
-    if (tct_mtx_lock(&mutex) != tct_thrd_success)
-      goto exit;
-    thread_busy = false;
-    while (!thread_busy) {
-      if (tct_cnd_wait(&condvar, &mutex) != tct_thrd_success)
-        goto unlock_and_exit;
+    if (cv.lock()) goto exit;
+    cv.busy(false);
+    while (!cv.busy()) {
+      if (cv.wait()) goto unlock_and_exit;
     }
-    if (tct_mtx_unlock(&mutex) != tct_thrd_success)
-      goto exit;
+    if (cv.unlock()) goto exit;
 
   }
 
   return 0;
 
   unlock_and_exit:
-  tct_mtx_unlock(&mutex);
+  cv.unlock();
   exit:
   thread_active.store(false);
   return 1;
@@ -203,51 +231,42 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
   std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(new std::shared_ptr<ThreadArgs>(args));
 
   if (!thread_active.load()) {
-    if (tct_mtx_init(&mutex, tct_mtx_plain) != tct_thrd_success)
-      return 1;
-
-    if (tct_cnd_init(&condvar) != tct_thrd_success) {
-      tct_mtx_destroy(&mutex);
-      return 1;
-    }
 
     tct_thrd_t thr;
-    tct_thrd_create(&thr, &wait_thread_persistent, NULL);
+    if (tct_thrd_create(&thr, &wait_thread_persistent, NULL) != tct_thrd_success)
+      goto exit;
 
-    if (tct_mtx_lock(&mutex) != tct_thrd_success)
-      return 1;
+    if (cv.lock()) goto exit;
     while (!thread_active.load()) {
-      if (tct_cnd_wait(&condvar, &mutex) != tct_thrd_success) {
-        tct_mtx_unlock(&mutex);
-        return 1;
-      }
+      if (cv.wait()) goto unlock_and_exit;
     }
-    if (tct_mtx_unlock(&mutex) != tct_thrd_success)
-      return 1;
+    if (cv.unlock()) goto exit;
+
   }
 
   do {
-    if (tct_mtx_lock(&mutex) != tct_thrd_success)
-      return 1;
-    if (thread_busy) {
-      tct_mtx_unlock(&mutex);
-      break;
-    }
-    thread_busy = true;
-    thread_args = std::move(argsptr);
-    if (tct_cnd_signal(&condvar) != tct_thrd_success) {
-      tct_mtx_unlock(&mutex);
-      return 1;
-    }
-    if (tct_mtx_unlock(&mutex) != tct_thrd_success)
-      return 1;
 
+    if (cv.lock()) goto exit;
+    if (cv.busy())
+      break;
+
+    cv.busy(true);
+    thread_args = std::move(argsptr);
+    if (cv.signal()) goto unlock_and_exit;
+    if (cv.unlock()) goto exit;
     return 0;
+
   } while (0);
 
+  cv.unlock();
   tct_thrd_t thr;
 
-  return tct_thrd_create(&thr, &wait_thread_ephemeral, static_cast<void *>(argsptr.release())) != tct_thrd_success;
+  return tct_thrd_create(&thr, &wait_thread_single, static_cast<void *>(argsptr.release())) != tct_thrd_success;
+
+  unlock_and_exit:
+  cv.unlock();
+  exit:
+  return 1;
 
 }
 

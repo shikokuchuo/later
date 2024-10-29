@@ -4,7 +4,6 @@
 #include <R_ext/Rdynload.h>
 #include <stdint.h> // for uint64_t
 #include "fd.h" // for struct pollfd
-#include "tinycthread.h" // for tct_mtx_t and tct_cnd_t
 
 /* FIXME:
 Check these declarations against the C/Fortran source code.
@@ -89,21 +88,8 @@ void R_init_later(DllInfo *dll) {
   R_RegisterCCallable("later", "apiVersion",       (DL_FUNC)&apiVersion);
 }
 
-extern tct_mtx_t mutex;
-extern tct_cnd_t condvar;
-int later_thread_active(void);
-void later_set_exiting(void);
-void cancel_busy_thread(void);
+void later_exiting(void);
 
 void R_unload_later(DllInfo *info) {
-  // if wait thread active, signal it to exit
-  if (later_thread_active()) {
-    later_set_exiting(); // atomic so can be called outside lock
-    tct_mtx_lock(&mutex);
-    cancel_busy_thread(); // not thread-safe so must be called under lock
-    tct_cnd_signal(&condvar);
-    tct_mtx_unlock(&mutex);
-    tct_cnd_destroy(&condvar);
-    tct_mtx_destroy(&mutex);
-  }
+  later_exiting(); // signals wait thread to exit if active
 }
