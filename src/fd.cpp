@@ -58,6 +58,23 @@ private:
 
 };
 
+// for persistent wait thread
+tct_mtx_t mutex;
+tct_cnd_t condvar;
+bool thread_busy = false; // the condition
+std::unique_ptr<std::shared_ptr<ThreadArgs>> later_thread_args;
+// atomic bool allows reads / writes from both threads not under lock
+std::atomic<bool> later_thread_active = false;
+
+extern "C" int later_thread_active_load() {
+  return later_thread_active.load();
+}
+
+extern "C" void later_thread_active_store(int value) {
+  later_thread_active.store(value);
+}
+
+// callback executed on main thread
 static void later_callback(void *arg) {
 
   std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(static_cast<std::shared_ptr<ThreadArgs>*>(arg));
@@ -76,13 +93,7 @@ static void later_callback(void *arg) {
 }
 
 // CONSIDER: if necessary to add method for HANDLES on Windows. Would be different code to SOCKETs.
-// TODO: implement re-usable background thread.
-static int wait_thread(void *arg) {
-
-  tct_thrd_detach(tct_thrd_current());
-
-  std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(static_cast<std::shared_ptr<ThreadArgs>*>(arg));
-  std::shared_ptr<ThreadArgs> args = *argsptr;
+static int wait_on_fds(std::shared_ptr<ThreadArgs> args) {
 
   // poll() whilst checking for cancellation at intervals
 
@@ -110,9 +121,63 @@ static int wait_thread(void *arg) {
     std::fill(args->results->begin(), args->results->end(), NA_INTEGER);
   }
 
+  return 0;
+
+}
+
+static int wait_thread_ephemeral(void *arg) {
+
+  tct_thrd_detach(tct_thrd_current());
+
+  std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(static_cast<std::shared_ptr<ThreadArgs>*>(arg));
+  std::shared_ptr<ThreadArgs> args = *argsptr;
+
+  if (wait_on_fds(args))
+    return 1;
+
   callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(argsptr.release()), 0, args->loop);
 
   return 0;
+
+}
+
+static int wait_thread_persistent(void *arg) {
+
+  tct_thrd_detach(tct_thrd_current());
+  later_thread_active.store(true);
+
+  while (1) {
+
+    if (tct_mtx_lock(&mutex) != tct_thrd_success)
+      goto exit;
+
+    thread_busy = false;
+    while (!thread_busy) {
+      if (tct_cnd_wait(&condvar, &mutex) != tct_thrd_success)
+        goto unlock_and_exit;
+    }
+    if (tct_mtx_unlock(&mutex) != tct_thrd_success)
+      goto exit;
+
+    if (!later_thread_active.load())  // set to false on package unload
+      goto exit;
+
+    std::shared_ptr<ThreadArgs> args = *later_thread_args;
+
+    if (wait_on_fds(args))
+      goto exit;
+
+    callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(later_thread_args.release()), 0, args->loop);
+
+  }
+
+  return 0;
+
+  unlock_and_exit:
+  tct_mtx_unlock(&mutex);
+  exit:
+  later_thread_active.store(false);
+  return 1;
 
 }
 
@@ -120,9 +185,42 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
 
   std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(new std::shared_ptr<ThreadArgs>(args));
 
+  if (!later_thread_active.load()) {
+    if (tct_mtx_init(&mutex, tct_mtx_plain) != tct_thrd_success)
+      return 1;
+
+    if (tct_cnd_init(&condvar) != tct_thrd_success) {
+      tct_mtx_destroy(&mutex);
+      return 1;
+    }
+
+    tct_thrd_t thr;
+    tct_thrd_create(&thr, &wait_thread_persistent, NULL);
+    sleep(1); // to REPLACE
+  }
+
+  do {
+    if (tct_mtx_lock(&mutex) != tct_thrd_success)
+      return 1;
+    if (thread_busy) {
+      tct_mtx_unlock(&mutex);
+      break;
+    }
+    thread_busy = true;
+    later_thread_args = std::move(argsptr);
+    if (tct_cnd_signal(&condvar) != tct_thrd_success) {
+      tct_mtx_unlock(&mutex);
+      return 1;
+    }
+    if (tct_mtx_unlock(&mutex) != tct_thrd_success)
+      return 1;
+
+    return 0;
+  } while (0);
+
   tct_thrd_t thr;
 
-  return tct_thrd_create(&thr, &wait_thread, static_cast<void *>(argsptr.release())) != tct_thrd_success;
+  return tct_thrd_create(&thr, &wait_thread_ephemeral, static_cast<void *>(argsptr.release())) != tct_thrd_success;
 
 }
 
@@ -132,7 +230,7 @@ static SEXP execLater_fd_impl(Rcpp::Function callback, int num_fds, struct pollf
   args->callback = std::unique_ptr<Rcpp::Function>(new Rcpp::Function(callback));
 
   if (execLater_launch_thread(args))
-    Rcpp::stop("Thread creation failed");
+    Rcpp::stop("later_fd() wait failed");
 
   Rcpp::XPtr<std::shared_ptr<std::atomic<bool>>> xptr(new std::shared_ptr<std::atomic<bool>>(args->flag), true);
   return xptr;
@@ -208,9 +306,8 @@ Rcpp::LogicalVector fd_cancel(Rcpp::RObject xptr) {
 
 // Schedules a C function that takes a pointer to an integer array (provided by
 // this function when calling back) and a void * argument, to execute on file
-// descriptor readiness. Returns 0 upon success and 1 if creating the wait
-// thread failed. NOTE: this is different to execLaterNative2() which returns 0
-// on failure.
+// descriptor readiness. Returns 0 upon success and 1 on failure. NOTE: this is
+// different to execLaterNative2() which returns 0 on failure.
 extern "C" int execLaterFdNative(void (*func)(int *, void *), void *data, int num_fds, struct pollfd *fds, double timeoutSecs, int loop_id) {
   ensureInitialized();
   return execLater_fd_impl(func, data, num_fds, fds, timeoutSecs, loop_id);
