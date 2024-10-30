@@ -194,7 +194,7 @@ static int wait_thread_persistent(void *arg) {
 
   while (1) {
 
-    if (!thread_active->load()) break; // set by later_exiting() on unload
+    if (!thread_active->load()) break; // set by cv destructor on exit
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
@@ -213,7 +213,7 @@ static int wait_thread_persistent(void *arg) {
 
   }
 
-  cv.destroy(); // must do this from here rather than the destructor to avoid deadlock
+  cv.destroy(); // must do this from here rather than cv destructor to avoid deadlock
   return 0;
 
 }
