@@ -189,7 +189,7 @@ static int wait_thread_persistent(void *arg) {
   thread_active->store(true); // atomic allows update prior to acquiring lock
 
   if (cv.lock()) THREAD_RETURN(1);
-  if (cv.signal()) THREAD_RETURN(1); // signal to sync with main thread
+  if (cv.signal()) { cv.unlock(); THREAD_RETURN(1); } // signal to sync with main thread
   cv.busy(false);
   while (!cv.busy()) {
     if (cv.wait()) { cv.unlock(); THREAD_RETURN(1); }
@@ -240,7 +240,6 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
 
     if (cv.lock()) return 1;
     if (cv.busy()) { cv.unlock(); break; } // busy so create new single thread
-
     cv.busy(true);
     thread_args = std::move(argsptr);
     if (cv.signal()) { cv.unlock(); return 1; }
