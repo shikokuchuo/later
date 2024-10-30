@@ -198,7 +198,7 @@ static int wait_thread_persistent(void *arg) {
 
   while (1) {
 
-    if (!thread_active->load()) return(1); // set by later_exiting() on unload
+    if (!thread_active->load()) break; // set by later_exiting() on unload
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
