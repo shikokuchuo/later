@@ -99,8 +99,8 @@ public:
 };
 
 // for persistent wait thread
-static std::shared_ptr<std::atomic<bool>> thread_active = std::make_shared<std::atomic<bool>>(false);
 static std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
+static std::unique_ptr<std::atomic<bool>> thread_active(new std::atomic<bool>(false));
 static Cv cv;
 
 // accessor for init.c
@@ -137,8 +137,6 @@ static void later_callback(void *arg) {
 // CONSIDER: if necessary to add method for HANDLES on Windows. Would be different code to SOCKETs.
 static int wait_on_fds(std::shared_ptr<ThreadArgs> args) {
 
-  // poll() whilst checking for cancellation at intervals
-
   int ready = -1; // initialized at -1 to ensure it runs at least once
   while (true) {
     double waitFor_ms = args->timeout.diff_secs(Timestamp()) * 1000;
@@ -152,8 +150,6 @@ static int wait_on_fds(std::shared_ptr<ThreadArgs> args) {
     if (args->flag->load()) return 1;
     if (ready) break;
   }
-
-  // store pollfd revents in args->results for use by callback
 
   if (ready > 0) {
     for (int i = 0; i < args->num_fds; i++) {
@@ -202,8 +198,11 @@ static int wait_thread_persistent(void *arg) {
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
-    if (wait_on_fds(args) == 0) // only callback if not cancelled
+    if (wait_on_fds(args)) {
+      thread_args.reset(); // cancelled so just reset
+    } else {
       callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
+    }
 
     if (cv.lock()) THREAD_RETURN(1);
     cv.busy(false);
