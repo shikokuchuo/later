@@ -60,6 +60,10 @@ private:
 
 };
 
+// for persistent wait thread
+static std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
+static std::unique_ptr<std::atomic<bool>> thread_active(new std::atomic<bool>(false));
+
 // special condition variable class for later_fd()
 class Cv {
   tct_mtx_t _m;
@@ -72,6 +76,18 @@ public:
       throw std::runtime_error("Mutex failed to initialize");
     if (tct_cnd_init(&_c) != tct_thrd_success)
       throw std::runtime_error("Condition variable failed to initialize");
+  }
+  ~Cv() { // if thread active, signal it to exit and destructor is called from there
+    if (thread_active->load()) {
+      thread_active->store(false); // atomic so can be called outside lock
+      lock();
+      if (_busy)
+        (*thread_args)->flag->store(false);
+      signal();
+      unlock();
+    } else {
+      destroy();
+    }
   }
   bool lock() {
     return tct_mtx_lock(&_m) != tct_thrd_success;
@@ -98,23 +114,7 @@ public:
 
 };
 
-// for persistent wait thread
-static std::unique_ptr<std::shared_ptr<ThreadArgs>> thread_args;
-static std::unique_ptr<std::atomic<bool>> thread_active(new std::atomic<bool>(false));
 static Cv cv;
-
-// accessor for init.c
-extern "C" void later_exiting(void) {
-  if (thread_active->load()) {
-    thread_active->store(false); // atomic so can be called outside lock
-    cv.lock();
-    if (cv.busy())
-      (*thread_args)->flag->store(false);
-    cv.signal();
-    cv.unlock();
-  }
-  cv.destroy(); // must be called eplicitly here to ensure this happens last
-}
 
 // callback executed on main thread
 static void later_callback(void *arg) {
@@ -213,6 +213,7 @@ static int wait_thread_persistent(void *arg) {
 
   }
 
+  cv.destroy(); // must do this from here rather than the destructor to avoid deadlock
   return 0;
 
 }

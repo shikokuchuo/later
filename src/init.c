@@ -87,9 +87,3 @@ void R_init_later(DllInfo *dll) {
   R_RegisterCCallable("later", "execLaterFdNative",(DL_FUNC)&execLaterFdNative);
   R_RegisterCCallable("later", "apiVersion",       (DL_FUNC)&apiVersion);
 }
-
-void later_exiting(void);
-
-void R_unload_later(DllInfo *info) {
-  later_exiting(); // signals wait thread to exit if active
-}
