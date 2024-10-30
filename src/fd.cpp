@@ -184,10 +184,10 @@ static int wait_thread_single(void *arg) {
 static int wait_thread_persistent(void *arg) {
 
   tct_thrd_detach(tct_thrd_current());
-  thread_active->store(true);
+  thread_active->store(true); // atomic allows update prior to acquiring lock
 
   if (cv.lock()) goto exit;
-  if (cv.signal()) goto unlock_and_exit;
+  if (cv.signal()) goto unlock_and_exit; // signal to sync with main thread
   cv.busy(false);
   while (!cv.busy()) {
     if (cv.wait()) goto unlock_and_exit;
@@ -202,10 +202,8 @@ static int wait_thread_persistent(void *arg) {
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
-    if (wait_on_fds(args))
-      goto exit;
-
-    callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
+    if (wait_on_fds(args) == 0) // only callback if not cancelled
+      callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
 
     if (cv.lock()) goto exit;
     cv.busy(false);
@@ -237,8 +235,8 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
       goto exit;
 
     if (cv.lock()) goto exit;
-    while (!thread_active->load()) {
-      if (cv.wait()) goto unlock_and_exit;
+    while (!thread_active->load()) { // not the condition, but thread will update this
+      if (cv.wait()) goto unlock_and_exit; // wait until signal from thread
     }
     if (cv.unlock()) goto exit;
 
