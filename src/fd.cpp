@@ -198,7 +198,7 @@ static int wait_thread_persistent(void *arg) {
 
   while (1) {
 
-    if (!thread_active->load()) THREAD_RETURN(1); // set by later_exiting() on unload
+    if (!thread_active->load()) return(1); // set by later_exiting() on unload
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
@@ -240,6 +240,7 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
 
     if (cv.lock()) return 1;
     if (cv.busy()) { cv.unlock(); break; } // busy so create new single thread
+
     cv.busy(true);
     thread_args = std::move(argsptr);
     if (cv.signal()) { cv.unlock(); return 1; }
