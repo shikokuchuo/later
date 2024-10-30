@@ -8,6 +8,8 @@
 #include "later.h"
 #include "callback_registry_table.h"
 
+#define THREAD_RETURN(xc) { thread_active->store(false); return xc; }
+
 extern CallbackRegistryTable callbackRegistryTable;
 
 class ThreadArgs {
@@ -186,41 +188,33 @@ static int wait_thread_persistent(void *arg) {
   tct_thrd_detach(tct_thrd_current());
   thread_active->store(true); // atomic allows update prior to acquiring lock
 
-  if (cv.lock()) goto exit;
-  if (cv.signal()) goto unlock_and_exit; // signal to sync with main thread
+  if (cv.lock()) THREAD_RETURN(1);
+  if (cv.signal()) THREAD_RETURN(1); // signal to sync with main thread
   cv.busy(false);
   while (!cv.busy()) {
-    if (cv.wait()) goto unlock_and_exit;
+    if (cv.wait()) { cv.unlock(); THREAD_RETURN(1); }
   }
-  if (cv.unlock()) goto exit;
+  if (cv.unlock()) THREAD_RETURN(1);
 
   while (1) {
 
-    // set to false by later_exiting() on unload
-    if (!thread_active->load())
-      goto exit;
+    if (!thread_active->load()) THREAD_RETURN(1); // set by later_exiting() on unload
 
     std::shared_ptr<ThreadArgs> args = *thread_args;
 
     if (wait_on_fds(args) == 0) // only callback if not cancelled
       callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
 
-    if (cv.lock()) goto exit;
+    if (cv.lock()) THREAD_RETURN(1);
     cv.busy(false);
     while (!cv.busy()) {
-      if (cv.wait()) goto unlock_and_exit;
+      if (cv.wait()) { cv.unlock(); THREAD_RETURN(1); }
     }
-    if (cv.unlock()) goto exit;
+    if (cv.unlock()) THREAD_RETURN(1);
 
   }
 
   return 0;
-
-  unlock_and_exit:
-  cv.unlock();
-  exit:
-  thread_active->store(false);
-  return 1;
 
 }
 
@@ -232,39 +226,32 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
 
     tct_thrd_t thr;
     if (tct_thrd_create(&thr, &wait_thread_persistent, NULL) != tct_thrd_success)
-      goto exit;
+      return 1;
 
-    if (cv.lock()) goto exit;
+    if (cv.lock()) return 1;
     while (!thread_active->load()) { // not the condition, but thread will update this
-      if (cv.wait()) goto unlock_and_exit; // wait until signal from thread
+      if (cv.wait()) { cv.unlock(); return 1; } // wait for signal from thread
     }
-    if (cv.unlock()) goto exit;
+    if (cv.unlock()) return 1;
 
   }
 
   do {
 
-    if (cv.lock()) goto exit;
-    if (cv.busy())
-      break;
+    if (cv.lock()) return 1;
+    if (cv.busy()) { cv.unlock(); break; } // busy so create new single thread
 
     cv.busy(true);
     thread_args = std::move(argsptr);
-    if (cv.signal()) goto unlock_and_exit;
-    if (cv.unlock()) goto exit;
+    if (cv.signal()) { cv.unlock(); return 1; }
+    if (cv.unlock()) return 1;
     return 0;
 
   } while (0);
 
-  cv.unlock();
   tct_thrd_t thr;
 
   return tct_thrd_create(&thr, &wait_thread_single, static_cast<void *>(argsptr.release())) != tct_thrd_success;
-
-  unlock_and_exit:
-  cv.unlock();
-  exit:
-  return 1;
 
 }
 
