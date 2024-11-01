@@ -101,7 +101,7 @@ public:
   bool wait() {
     return tct_cnd_wait(&_c, &_m) != tct_thrd_success;
   }
-  bool busy() {
+  bool busy() const {
     return _busy;
   }
   void busy(bool value) {
@@ -229,7 +229,7 @@ static int execLater_launch_thread(std::shared_ptr<ThreadArgs> args) {
       return 1;
 
     if (cv.lock()) return 1;
-    while (!thread_active->load()) { // not the condition, but thread will update this
+    while (!thread_active->load()) { // thread can update this without acquiring lock
       if (cv.wait()) { cv.unlock(); return 1; } // wait for signal from thread
     }
     if (cv.unlock()) return 1;
