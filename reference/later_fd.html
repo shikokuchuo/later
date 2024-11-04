@@ -129,6 +129,8 @@ executed or has been cancelled already).</p>
 error, the callback will be made on a vector of all <code>NA</code>s. This is
 indistinguishable from a case where the <code>poll</code> succeeds but there are error
 conditions pending against each file descriptor.</p>
+<p>If no file descriptors are supplied, the callback is scheduled for immediate
+execution and made on the empty logical vector <code>logical(0)</code>.</p>
     </div>
     <div id="note">
     <h2>Note</h2>
