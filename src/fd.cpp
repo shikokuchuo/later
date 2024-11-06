@@ -203,6 +203,7 @@ static int wait_thread_persistent(void *arg) {
     } else {
       callbackRegistryTable.scheduleCallback(later_callback, static_cast<void *>(thread_args.release()), 0, args->loop);
     }
+    args = nullptr;
 
     if (cv.lock()) THREAD_RETURN(1);
     cv.busy(false);
