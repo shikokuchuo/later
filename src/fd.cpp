@@ -112,10 +112,24 @@ static int wait_thread(void *arg) {
   std::unique_ptr<std::shared_ptr<ThreadArgs>> argsptr(static_cast<std::shared_ptr<ThreadArgs>*>(arg));
   std::shared_ptr<ThreadArgs> args = *argsptr;
 
-  // poll() whilst checking for cancellation at intervals
-
   int ready;
   double waitFor = std::fmax(args->timeout.diff_secs(Timestamp()), 0);
+
+#ifdef _WIN32
+  // Special case read of stdin on Windows
+  if (args->fds.size() == 1 && (args->fds)[0].fd == 0) {
+    HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
+    do {
+      // Never wait for longer than ~1 second so we can check for cancellation
+      waitFor = std::fmin(waitFor, 1.024);
+      ready = WaitForSingleObject(hstdin, static_cast<DWORD>(waitFor * 1000));
+      if (!args->active->load()) return 1;
+      if (ready != WAIT_TIMEOUT) break;
+    } while ((waitFor = args->timeout.diff_secs(Timestamp())) > 0);
+  }
+  else
+#endif
+
   do {
     // Never wait for longer than ~1 second so we can check for cancellation
     waitFor = std::fmin(waitFor, 1.024);
@@ -123,8 +137,6 @@ static int wait_thread(void *arg) {
     if (!args->active->load()) return 1;
     if (ready) break;
   } while ((waitFor = args->timeout.diff_secs(Timestamp())) > 0);
-
-  // store pollfd revents in args->results for use by callback
 
   if (ready > 0) {
     for (std::size_t i = 0; i < args->fds.size(); i++) {
