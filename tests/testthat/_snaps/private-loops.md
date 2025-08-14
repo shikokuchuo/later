@@ -59,3 +59,14 @@
       Error in `with_loop()`:
       ! loop has been destroyed!
 
+# loop error handling
+
+    Code
+      with_loop(loop, {
+        `[[<-`(later:::.loops, as.character(loop$id), NULL)
+        current_loop()
+      })
+    Condition
+      Error in `current_loop()`:
+      ! Current loop with id 43 not found.
+
