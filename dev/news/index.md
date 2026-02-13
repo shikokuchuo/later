@@ -2,9 +2,23 @@
 
 ## later (development version)
 
-- Requires R \>= 3.5 and Rcpp \>= 1.0.10 to ensure later callback errors
-  are properly handled. We have removed the fallback to legacy pre-later
-  1.4.0 behaviour ([\#241](https://github.com/r-lib/later/issues/241)).
+- Improved responsiveness when idle at the R console on POSIX systems
+  ([\#251](https://github.com/r-lib/later/issues/251)).
+
+- Fixes [\#249](https://github.com/r-lib/later/issues/249): Moved the
+  contents of `inst/include/later.h` into `later_api.h` to ensure R
+  headers are not included before Rcpp headers when Rcpp auto-includes
+  `$PACKAGE.h` in RcppExports.cpp. The public API header remains
+  `later_api.h` ([\#250](https://github.com/r-lib/later/issues/250)).
+
+## later 1.4.5
+
+CRAN release: 2026-01-08
+
+- Now requires R \>= 3.5.0 (for `R_UnwindProtect()`) and Rcpp \>=
+  1.0.10. Removed legacy non-unwind-protect code paths that were
+  previously used as a fallback on older R versions
+  ([\#241](https://github.com/r-lib/later/issues/241)).
 
 ## later 1.4.4
 
