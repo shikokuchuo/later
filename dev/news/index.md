@@ -2,7 +2,23 @@
 
 ## later (development version)
 
+- Fixed [\#262](https://github.com/r-lib/later/issues/262): Internal
+  update for compatibility with Rcpp re. `Rf_error` handling
+  ([\#263](https://github.com/r-lib/later/issues/263)).
+
+## later 1.4.7
+
+CRAN release: 2026-02-24
+
+- Fixed [\#256](https://github.com/r-lib/later/issues/256): compilation
+  failure with glibc \>= 2.43 and GCC \>= 15, caused by the C11
+  `once_flag` type now being defined in `<stdlib.h>` under C23. Renamed
+  internal tinycthread symbols to avoid the namespace collision
+  ([\#257](https://github.com/r-lib/later/issues/257)).
+
 ## later 1.4.6
+
+CRAN release: 2026-02-13
 
 - Improved responsiveness when idle at the R console on POSIX systems
   ([\#251](https://github.com/r-lib/later/issues/251)).
